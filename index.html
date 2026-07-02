@@ -367,40 +367,39 @@ function showSetPassword(){
   document.getElementById("app").style.display="none";
 }
 
-// INIT
+// INIT — parse hash BEFORE Supabase clears it
+var _isInvite=false,_isRecovery=false;
+(function(){
+  var h=window.location.hash||"";
+  if(h.indexOf("type=invite")>-1)_isInvite=true;
+  if(h.indexOf("type=recovery")>-1)_isRecovery=true;
+  if(h.indexOf("access_token")>-1){
+    document.getElementById("login-screen").style.display="none";
+    showLoading(true);
+  } else {
+    sb.auth.getSession().then(function(res){
+      showLoading(false);
+      if(res.data&&res.data.session&&res.data.session.user){showPlatform(res.data.session.user);}
+      else{document.getElementById("login-screen").style.display="flex";}
+    });
+  }
+})();
+
 sb.auth.onAuthStateChange(function(event,session){
-  if(event==="PASSWORD_RECOVERY"||event==="SIGNED_IN"){
+  showLoading(false);
+  if(event==="SIGNED_IN"||event==="PASSWORD_RECOVERY"){
     if(session&&session.user){
-      // If this is from an invite link (no password set yet), show set password screen
-      var hash=window.location.hash;
-      if(hash&&hash.indexOf("type=invite")>-1){showSetPassword();return;}
-      if(hash&&hash.indexOf("type=recovery")>-1){showSetPassword();return;}
-      showPlatform(session.user);
+      if(_isInvite||_isRecovery){showSetPassword();}
+      else{showPlatform(session.user);}
     }
   } else if(event==="USER_UPDATED"){
-    if(session&&session.user){showPlatform(session.user);}
+    if(session&&session.user){_isInvite=false;_isRecovery=false;showPlatform(session.user);}
   } else if(event==="SIGNED_OUT"){
     document.getElementById("app").style.display="none";
     document.getElementById("set-password-screen").style.display="none";
     document.getElementById("login-screen").style.display="flex";
   }
 });
-
-// Check URL hash for invite/recovery tokens on page load
-(function(){
-  var hash=window.location.hash;
-  if(hash&&(hash.indexOf("type=invite")>-1||hash.indexOf("type=recovery")>-1||hash.indexOf("access_token")>-1)){
-    // Supabase will handle this via onAuthStateChange, just show loading
-    document.getElementById("login-screen").style.display="none";
-    showLoading(true);
-    return;
-  }
-  sb.auth.getSession().then(function(res){
-    showLoading(false);
-    if(res.data&&res.data.session&&res.data.session.user){showPlatform(res.data.session.user);}
-    else{document.getElementById("login-screen").style.display="flex";}
-  });
-})();
 </script>
 </body>
 </html>
