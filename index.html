@@ -88,6 +88,27 @@ label:first-child{margin-top:0}
   </div>
 </div>
 
+
+<!-- SET PASSWORD SCREEN -->
+<div id="set-password-screen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:#F0F3F7;padding:20px">
+  <div class="login-card">
+    <img src="data:image/png;base64,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" alt="The Leadership Lab" style="width:140px;margin:0 auto 20px;display:block">
+    <div style="font-size:11px;letter-spacing:2px;color:#2E86C1;margin-bottom:6px">SHAPING LEADERS. TRANSFORMING FUTURES.</div>
+    <h2 style="font-size:18px;font-weight:700;color:#1A3A5C;margin-bottom:4px">Set your password</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:24px">Choose a password to activate your account</p>
+    <div style="text-align:left">
+      <label>New password</label>
+      <input id="new-password" type="password" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter')doSetPassword()">
+      <label>Confirm password</label>
+      <input id="confirm-password" type="password" placeholder="Repeat your password" onkeydown="if(event.key==='Enter')doSetPassword()">
+      <div id="setpass-error" style="display:none" class="err-msg"></div>
+      <button class="btn btn-primary btn-full" style="margin-top:16px" id="setpass-btn" onclick="doSetPassword()">
+        Set password &amp; sign in
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- MAIN PLATFORM -->
 <div id="app" style="display:none">
   <div class="sidebar">
@@ -326,16 +347,60 @@ function vProfile(){
   return '<h2 style="font-size:18px;font-weight:700;color:'+N+';margin-bottom:4px">The Leadership Lab</h2><p style="font-size:12px;color:#888;margin-bottom:18px">Company profile &mdash; share with clients before the formal proposal goes out.</p><div class="card" style="border-top:4px solid '+N+';text-align:center;padding:22px;margin-bottom:16px"><div style="font-size:24px;font-weight:900;color:'+N+';letter-spacing:1.5px">THE LEADERSHIP LAB</div><div style="font-size:10px;letter-spacing:3px;color:'+B+';margin:5px 0 14px">SHAPING LEADERS. TRANSFORMING FUTURES.</div><p style="font-size:13px;color:#444;line-height:1.75;max-width:560px;margin:0 auto">The Leadership Lab empowers leaders at all levels with the tools, insights, and strategies to lead effectively in today's fast-changing business world. Our programs challenge traditional thinking and encourage innovation. Led by experienced facilitators, each session delivers practical skills that drive real workplace impact.</p></div><div class="row2" style="margin-bottom:16px"><div class="card" style="border-left:4px solid '+N+'"><div style="font-weight:700;font-size:13px;color:'+N+';margin-bottom:6px">Mission</div><p style="font-size:13px;color:#555;line-height:1.65">To equip leaders and professionals with the mindset, skills, and strategies to lead through complexity, spark innovation, and build strong connections.</p></div><div class="card" style="border-left:4px solid '+B+'"><div style="font-weight:700;font-size:13px;color:'+B+';margin-bottom:6px">Vision</div><p style="font-size:13px;color:#555;line-height:1.65">To be a global leader in leadership and communication development, shaping a future where leaders at all levels drive change, inspire growth, and create lasting impact.</p></div></div><div class="card" style="margin-bottom:16px"><div style="font-weight:700;font-size:14px;color:'+N+';margin-bottom:14px">Our four pillars</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+pillars+'</div></div><div class="card"><div style="font-weight:700;font-size:13px;color:'+N+';margin-bottom:10px">Contact</div><div style="display:flex;gap:24px;font-size:13px;color:#555;flex-wrap:wrap"><div><i class="ti ti-phone" style="color:'+B+'"></i> +60 14 6248 386</div><div><i class="ti ti-world" style="color:'+B+'"></i> <a href="https://www.leadershiplabtx.com" target="_blank" style="color:'+B+'">www.leadershiplabtx.com</a></div><div><i class="ti ti-brand-linkedin" style="color:'+B+'"></i> the-leadership-labtx</div></div></div>';
 }
 
+// SET PASSWORD
+async function doSetPassword(){
+  var p1=document.getElementById("new-password").value;
+  var p2=document.getElementById("confirm-password").value;
+  var err=document.getElementById("setpass-error");
+  var btn=document.getElementById("setpass-btn");
+  if(!p1||p1.length<6){err.style.display="block";err.textContent="Password must be at least 6 characters.";return;}
+  if(p1!==p2){err.style.display="block";err.textContent="Passwords don't match.";return;}
+  btn.innerHTML='<span class="spin"></span>Setting password...';btn.disabled=true;err.style.display="none";
+  var result=await sb.auth.updateUser({password:p1});
+  if(result.error){err.style.display="block";err.textContent=result.error.message;btn.innerHTML="Set password & sign in";btn.disabled=false;}
+  else{showToast("Password set! Welcome to The Leadership Lab.");document.getElementById("set-password-screen").style.display="none";showPlatform(result.data.user);}
+}
+
+function showSetPassword(){
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("set-password-screen").style.display="flex";
+  document.getElementById("app").style.display="none";
+}
+
 // INIT
 sb.auth.onAuthStateChange(function(event,session){
-  if(session&&session.user){showPlatform(session.user);}
-  else if(event==="SIGNED_OUT"){document.getElementById("app").style.display="none";document.getElementById("login-screen").style.display="flex";}
+  if(event==="PASSWORD_RECOVERY"||event==="SIGNED_IN"){
+    if(session&&session.user){
+      // If this is from an invite link (no password set yet), show set password screen
+      var hash=window.location.hash;
+      if(hash&&hash.indexOf("type=invite")>-1){showSetPassword();return;}
+      if(hash&&hash.indexOf("type=recovery")>-1){showSetPassword();return;}
+      showPlatform(session.user);
+    }
+  } else if(event==="USER_UPDATED"){
+    if(session&&session.user){showPlatform(session.user);}
+  } else if(event==="SIGNED_OUT"){
+    document.getElementById("app").style.display="none";
+    document.getElementById("set-password-screen").style.display="none";
+    document.getElementById("login-screen").style.display="flex";
+  }
 });
 
-sb.auth.getSession().then(function(res){
-  if(res.data&&res.data.session&&res.data.session.user){showPlatform(res.data.session.user);}
-  else{document.getElementById("login-screen").style.display="flex";}
-});
+// Check URL hash for invite/recovery tokens on page load
+(function(){
+  var hash=window.location.hash;
+  if(hash&&(hash.indexOf("type=invite")>-1||hash.indexOf("type=recovery")>-1||hash.indexOf("access_token")>-1)){
+    // Supabase will handle this via onAuthStateChange, just show loading
+    document.getElementById("login-screen").style.display="none";
+    showLoading(true);
+    return;
+  }
+  sb.auth.getSession().then(function(res){
+    showLoading(false);
+    if(res.data&&res.data.session&&res.data.session.user){showPlatform(res.data.session.user);}
+    else{document.getElementById("login-screen").style.display="flex";}
+  });
+})();
 </script>
 </body>
 </html>
