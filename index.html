@@ -77,9 +77,9 @@ label:first-child{margin-top:0}
     <p style="font-size:12px;color:#888;margin-bottom:24px">Sign in to access your team platform</p>
     <div style="text-align:left">
       <label>Email</label>
-      <input type="email" id="li-email" placeholder="you@leadershiplabtx.com">
+      <input type="email" id="li-email" placeholder="you@leadershiplabtx.com" onkeydown="if(event.key==='Enter')doLogin()">
       <label>Password</label>
-      <input type="password" id="li-pass" placeholder="Your password">
+      <input type="password" id="li-pass" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()">
       <div class="emsg" id="li-err"></div>
       <button class="btn btn-primary btn-full" style="margin-top:16px" id="li-btn" onclick="doLogin()">Sign in</button>
       <div style="text-align:center;margin-top:14px">
@@ -276,7 +276,12 @@ async function doLogin(){
   btn.innerHTML="<span class=\"spin\"></span>Signing in...";btn.disabled=true;
   var r=await sb.auth.signInWithPassword({email:email,password:pass});
   btn.innerHTML="Sign in";btn.disabled=false;
-  if(r.error){err.textContent=r.error.message;err.style.display="block";}
+  if(r.error){
+    var msg=r.error.message;
+    if(msg.toLowerCase().indexOf("invalid")>-1||msg.toLowerCase().indexOf("credentials")>-1){msg="Incorrect email or password. Please try again.";}
+    if(msg.toLowerCase().indexOf("email not confirmed")>-1){msg="Please confirm your email before signing in.";}
+    err.textContent=msg;err.style.display="block";
+  }
   else{showPlatform(r.data.user);}
 }
 
@@ -381,7 +386,7 @@ function vDash(){
   var tot=proposals.length,sent=proposals.filter(function(p){return p.status==="Sent";}).length,won=proposals.filter(function(p){return p.status==="Won";}).length;
   var rows=proposals.length===0?"<div style=\"text-align:center;padding:32px;color:#aaa;font-size:13px\">No proposals yet. Create your first one.</div>":proposals.slice(0,6).map(function(p){return "<div class=\"hrow\"><div style=\"flex:1;min-width:160px\"><div style=\"font-weight:700;font-size:13px;color:"+N+"\">"+p.clientName+"</div><div style=\"font-size:11px;color:#888\">"+p.industry+" &middot; "+dStr(p.createdAt)+"</div></div><span class=\"tag "+badgeClass(p.status)+"\">"+p.status+"</span><div style=\"font-weight:700;font-size:12px;color:"+N+";min-width:80px;text-align:right\">"+fmt(progTotal2(p)||progTotal(p))+"</div><button class=\"btn btn-ghost btn-sm\" onclick=\"dupeProp('"+p.id+"')\" >Duplicate</button></div>";}).join("");
   var pills=PROGS.filter(function(p){return p.id!=="custom";}).map(function(pr){return "<div style=\"border:1px solid #e0e4ea;border-radius:7px;padding:10px 12px;background:#FAFBFC\"><div style=\"display:flex;align-items:center;gap:7px;margin-bottom:3px\"><i class=\"ti "+pr.icon+"\" style=\"color:"+N+";font-size:15px\"></i><span style=\"font-weight:700;font-size:12px;color:"+N+"\">"+pr.name+"</span></div><div style=\"font-size:11px;color:#888\">"+pr.tag+"</div></div>";}).join("");
-  var _dk=currentUser?"tll_draft_"+currentUser.id:"";var _hd=_dk&&localStorage.getItem(_dk);return "<h2 style=\"font-size:20px;font-weight:700;color:"+N+";margin-bottom:4px\">Dashboard</h2>"+(_hd?"<div style=\"background:#FFF3CD;border:1px solid #E0C050;border-radius:7px;padding:9px 14px;font-size:12px;color:#856404;display:flex;align-items:center;gap:8px;margin-bottom:12px\"><i class=\"ti ti-file-alert\"></i><span>You have an unsaved draft proposal</span><button class=\"btn btn-sm\" onclick=\"loadDraft()\" style=\"background:#856404;color:#fff;margin-left:4px\">Resume</button><button onclick=\"clearDraft();render()\" style=\"background:none;border:none;cursor:pointer;color:#856404;font-size:18px;margin-left:auto\">&times;</button></div>":"")+'<p style="font-size:12px;color:#888;margin-bottom:20px">The Leadership Lab &mdash; Proposal Generator</p>'<div class=\"row3\" style=\"margin-bottom:18px\"><div class=\"stat-card\"><div class=\"stat-num\">"+tot+"</div><div class=\"stat-label\">Total proposals</div></div><div class=\"stat-card\"><div class=\"stat-num\">"+sent+"</div><div class=\"stat-label\">Sent to clients</div></div><div class=\"stat-card\"><div class=\"stat-num\">"+won+"</div><div class=\"stat-label\">Won</div></div></div><div class=\"card\" style=\"margin-bottom:16px\"><div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:14px\"><span style=\"font-weight:700;font-size:14px;color:"+N+"\">Recent proposals</span><button class=\"btn btn-primary btn-sm\" onclick=\"startNew()\"><i class=\"ti ti-plus\"></i>New proposal</button></div>"+rows+"</div><div class=\"card\"><div style=\"font-weight:700;font-size:13px;color:"+N+";margin-bottom:12px\">Our four pillars</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px\">"+pills+"</div></div>";
+  var _dk=currentUser?"tll_draft_"+currentUser.id:"";var _hd=_dk&&localStorage.getItem(_dk);return "<h2 style=\"font-size:20px;font-weight:700;color:"+N+";margin-bottom:4px\">Dashboard</h2>"+(_hd?"<div style=\"background:#FFF3CD;border:1px solid #E0C050;border-radius:7px;padding:9px 14px;font-size:12px;color:#856404;display:flex;align-items:center;gap:8px;margin-bottom:12px\"><i class=\"ti ti-file-alert\"></i><span>You have an unsaved draft proposal</span><button class=\"btn btn-sm\" onclick=\"loadDraft()\" style=\"background:#856404;color:#fff;margin-left:4px\">Resume</button><button onclick=\"clearDraft();render()\" style=\"background:none;border:none;cursor:pointer;color:#856404;font-size:18px;margin-left:auto\">&times;</button></div>":"")+'<p style="font-size:12px;color:#888;margin-bottom:20px">The Leadership Lab &mdash; Proposal Generator</p>'+'<div class=\"row3\" style=\"margin-bottom:18px\"><div class=\"stat-card\"><div class=\"stat-num\">"+tot+"</div><div class=\"stat-label\">Total proposals</div></div><div class=\"stat-card\"><div class=\"stat-num\">"+sent+"</div><div class=\"stat-label\">Sent to clients</div></div><div class=\"stat-card\"><div class=\"stat-num\">"+won+"</div><div class=\"stat-label\">Won</div></div></div><div class=\"card\" style=\"margin-bottom:16px\"><div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:14px\"><span style=\"font-weight:700;font-size:14px;color:"+N+"\">Recent proposals</span><button class=\"btn btn-primary btn-sm\" onclick=\"startNew()\"><i class=\"ti ti-plus\"></i>New proposal</button></div>"+rows+"</div><div class=\"card\"><div style=\"font-weight:700;font-size:13px;color:"+N+";margin-bottom:12px\">Our four pillars</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px\">"+pills+"</div></div>";
 }
 
 function vWiz(){
