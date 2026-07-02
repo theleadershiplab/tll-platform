@@ -131,7 +131,7 @@ label:first-child{margin-top:0}
     <div class="sitem" id="nav-history" onclick="navigate('history')"><i class="ti ti-folder" style="font-size:17px"></i> Client history</div>
     <div class="sitem" id="nav-speakers" onclick="navigate('speakers')"><i class="ti ti-users" style="font-size:17px"></i> Speaker profiles</div>
     <div class="sitem" id="nav-profile" onclick="navigate('profile')"><i class="ti ti-building" style="font-size:17px"></i> The Leadership Lab</div>
-    <div class="sitem" id="nav-tllinfo" onclick="navigate('tllinfo')"><i class="ti ti-id-badge" style="font-size:17px"></i> TLL Standard Profile</div>
+    <div class="sitem" id="nav-tllinfo" onclick="navigate('tllinfo')"><i class="ti ti-id-badge" style="font-size:17px"></i> Profile Generator</div>
     <div style="flex:1"></div>
     <div style="padding:12px 14px;border-top:1px solid rgba(255,255,255,.1)">
       <div id="user-email" style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:8px;word-break:break-all"></div>
@@ -151,6 +151,7 @@ var N = "#1A3A5C", B = "#2E86C1";
 
 // ── STATE ───────────────────────────────────────────────────────────────────
 var view = "dashboard", step = 1, proposals = [], form = {}, currentUser = null;
+var allTrainers = [], trainerSearch = "", expandedTrainer = null, trainerFormId = null;
 
 // ── DATA: PROGRAMMES ────────────────────────────────────────────────────────
 var PROGS = [
@@ -342,6 +343,7 @@ function showPlatform(user) {
   ge("app").style.display = "flex";
   ge("user-email").textContent = user.email;
   loadProposals();
+  loadTrainers();
 }
 
 async function doLogin() {
@@ -456,6 +458,7 @@ function navigate(v) {
   view = v; step = 1;
   document.querySelectorAll(".sitem").forEach(function(el) { el.classList.remove("active"); });
   var el = ge("nav-" + v); if (el) el.classList.add("active");
+  else if (v==="trainer-form") { var s=ge("nav-speakers"); if(s)s.classList.add("active"); }
   render();
 }
 function startNew() {
@@ -534,6 +537,7 @@ function render() {
   else if (view === "speakers") m.innerHTML = vSpeak();
   else if (view === "profile") m.innerHTML = vProf();
   else if (view === "tllinfo") m.innerHTML = vTllInfo();
+  else if (view === "trainer-form") m.innerHTML = vTrainerForm();
 }
 
 // ── VIEW: DASHBOARD ──────────────────────────────────────────────────────────
@@ -673,7 +677,7 @@ function vWiz() {
   }
 
   var backBtn = step===1?'<button class="btn btn-ghost" onclick="navigate(\'dashboard\')">Cancel</button>':'<button class="btn btn-ghost" onclick="prevStep()">&larr; Back</button>';
-  var nextBtn = step<4?'<button class="btn btn-primary" onclick="nextStep()">Continue &rarr;</button>':'<button class="btn btn-accent" onclick="saveProposal()"><i class="ti ti-device-floppy"></i> Save proposal</button>';
+  var nextBtn = step<4?'<button class="btn btn-primary" onclick="nextStep()">Continue &rarr;</button>':'<div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="generateProposalPDF()"><i class="ti ti-file-download"></i> Preview PDF</button><button class="btn btn-accent" onclick="saveProposal()"><i class="ti ti-device-floppy"></i> Save proposal</button></div>';
   return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><h2 style="font-size:18px;font-weight:700;color:' + N + '">New proposal</h2><span style="font-size:12px;color:#888">Step ' + step + ' of 4 &mdash; ' + steps[step-1] + '</span></div>'
     + '<div style="display:flex;gap:4px;margin-bottom:6px">' + bars + '</div>'
     + '<div style="display:flex;justify-content:space-between;margin-bottom:18px">' + labs + '</div>'
@@ -708,28 +712,253 @@ function vHist() {
 }
 
 // ── VIEW: SPEAKERS ────────────────────────────────────────────────────────────
-function vSpeak() {
-  var cards = FACS.map(function(f) {
-    var brings = f.brings.map(function(b) { return '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;font-size:12px;color:#444"><i class="ti ti-check" style="color:'+B+';font-size:14px;flex-shrink:0;margin-top:1px"></i>'+b+'</div>'; }).join('');
-    var creds = f.creds.map(function(c) { return '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;font-size:12px;color:#444"><i class="ti ti-certificate" style="color:'+N+';font-size:14px;flex-shrink:0;margin-top:1px"></i>'+c+'</div>'; }).join('');
-    var photo = f.photo
-      ? '<img src="' + f.photo + '" style="width:100px;height:100px;object-fit:cover;border-radius:50%;border:3px solid rgba(255,255,255,.3);flex-shrink:0">'
-      : '<div style="width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700;flex-shrink:0">' + f.name.split(" ").map(function(w){return w[0];}).slice(0,2).join("") + '</div>';
-    return '<div style="background:#fff;border-radius:12px;border:1px solid #e0e4ea;overflow:hidden;margin-bottom:16px">'
-      + '<div style="background:' + N + ';padding:16px 20px;display:flex;align-items:center;gap:16px">' + photo
-      + '<div><div style="font-weight:700;font-size:16px;color:#fff">' + f.name + '</div>'
-      + '<div style="font-size:12px;color:rgba(255,255,255,.8);margin-top:3px">' + f.title + '</div>'
-      + '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">' + f.loc + '</div></div></div>'
-      + '<div style="padding:16px 18px"><div class="qbox">'
-      + '<div style="font-style:italic;font-weight:600;color:#5B4A22;font-size:13px;line-height:1.5;margin-bottom:9px">&ldquo;' + f.quote + '&rdquo;</div>'
-      + '<p style="font-size:12px;color:#5B4A22;line-height:1.7">' + f.bio + '</p></div>'
-      + '<div class="row2" style="gap:16px;margin-top:4px">'
-      + '<div><div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:' + N + ';margin-bottom:7px">What ' + (f.pr==="she"?"she":"he") + ' brings</div>' + brings + '</div>'
-      + '<div><div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:' + N + ';margin-bottom:7px">Key credentials</div>' + creds + '</div></div></div></div>';
-  }).join('');
-  return '<h2 style="font-size:18px;font-weight:700;color:' + N + ';margin-bottom:4px">Speaker profiles</h2>'
-    + '<p style="font-size:12px;color:#888;margin-bottom:20px">All five facilitators available across any TLL programme.</p>' + cards;
+
+// ── TRAINER DB ────────────────────────────────────────────────────────────────
+async function loadTrainers() {
+  var r = await sb.from("trainers").select("*").order("created_at",{ascending:false});
+  allTrainers = FACS.map(function(f,i) {
+    return {id:f.id,full_name:f.name,title:f.title,location:f.loc,city:f.loc,nationality:"",
+      timezone:"",employment_type:"Contract",status:"Active",primary_specialization:f.title,
+      secondary_specializations:[],industries:[],languages:[],cefr_knowledge:"",
+      certifications:f.creds||[],years_experience:10,programme_eligibility:{},
+      internal_notes:"",photo:f.photo||"",quote:f.quote||"",bio:f.bio||"",brings:f.brings||[],
+      isBuiltIn:true};
+  });
+  if (!r.error && r.data) r.data.forEach(function(t){allTrainers.push(t);});
+  if (view==="speakers") render();
 }
+
+async function saveTrainer(data) {
+  var isNew = !data.id || data.id === "";
+  if (isNew) data.id = "t_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
+  data.created_at = data.created_at || Date.now();
+  var r = isNew ? await sb.from("trainers").insert(data) : await sb.from("trainers").update(data).eq("id",data.id);
+  if (r.error) { showToast("Save failed: "+r.error.message,"err"); return false; }
+  showToast(isNew?"Trainer added!":"Trainer updated!"); await loadTrainers(); return true;
+}
+
+async function deleteTrainer(id) {
+  if (!confirm("Remove this trainer?")) return;
+  var r = await sb.from("trainers").delete().eq("id",id);
+  if (r.error) { showToast("Delete failed","err"); return; }
+  showToast("Trainer removed"); allTrainers=allTrainers.filter(function(t){return t.id!==id;}); render();
+}
+
+// ── VIEW: SPEAKERS (LIST) ─────────────────────────────────────────────────────
+var PROG_ELIGIBILITY = ["Maverick Code","Unconventional Leadership","Power Skills Training",
+  "Bite-Size Programs","Leadership Development","Business English","Cross-Cultural Communication",
+  "Coaching Skills","Presentation Skills","Customer Service","Sales Communication",
+  "Group Coaching","Keynote Sessions"];
+
+function vSpeak() {
+  var q = trainerSearch.toLowerCase();
+  var filtered = allTrainers.filter(function(t) {
+    var name = (t.full_name||"").toLowerCase();
+    var title = (t.title||t.primary_specialization||"").toLowerCase();
+    var loc = (t.location||t.city||"").toLowerCase();
+    return !q || name.indexOf(q)>-1 || title.indexOf(q)>-1 || loc.indexOf(q)>-1;
+  });
+
+  var rows = filtered.length === 0
+    ? '<div style="text-align:center;padding:40px;color:#aaa">No trainers found.</div>'
+    : filtered.map(function(t) {
+        var isExp = expandedTrainer === t.id;
+        var statusColor = t.status==="Active"?"#27AE60":t.status==="On Leave"?"#E67E22":"#aaa";
+        var empBadge = t.employment_type ? '<span style="background:#EBF5FB;color:#2E86C1;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;margin-left:6px">'+t.employment_type+'</span>' : '';
+        var photo = t.photo ? '<img src="'+t.photo+'" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+          : '<div style="width:38px;height:38px;border-radius:50%;background:#1A3A5C;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0">'+((t.full_name||"?").split(" ").map(function(w){return w[0];}).slice(0,2).join(""))+'</div>';
+
+        var detail = "";
+        if (isExp) {
+          var brings = (t.brings||[]).map(function(b){return '<li>'+b+'</li>';}).join('');
+          var certs = (t.certifications||[]).join(', ') || '—';
+          var langs = Array.isArray(t.languages)&&t.languages.length ? t.languages.map(function(l){return typeof l==='object'?(l.lang||l)+(l.level?' ('+l.level+')':''):l;}).join(', ') : '—';
+          var inds = Array.isArray(t.industries)&&t.industries.length ? t.industries.join(', ') : '—';
+          var eligKeys = Object.keys(t.programme_eligibility||{}).filter(function(k){return (t.programme_eligibility||{})[k];});
+          var eligBadges = eligKeys.length ? eligKeys.map(function(k){return '<span style="background:#EBF5FB;color:#1A3A5C;font-size:11px;padding:3px 8px;border-radius:10px;margin:2px;display:inline-block">'+k+'</span>';}).join('') : '<span style="color:#aaa;font-size:12px">None specified</span>';
+          detail = '<div style="padding:14px 16px;background:#FAFBFC;border-top:1px solid #e0e4ea">'
+            + (t.quote?'<div style="background:#FDF8EE;border:1px solid #E8D9A0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-style:italic;font-size:13px;color:#5B4A22">&ldquo;'+t.quote+'&rdquo;</div>':"")
+            + (t.bio?'<p style="font-size:12px;color:#555;line-height:1.6;margin-bottom:12px">'+t.bio+'</p>':"")
+            + '<div class="row2" style="gap:14px;margin-bottom:12px">'
+            + '<div><div style="font-weight:700;font-size:11px;text-transform:uppercase;color:#1A3A5C;margin-bottom:6px">Details</div>'
+            + '<div style="font-size:12px;color:#555;line-height:1.8">'
+            + (t.nationality?'<b>Nationality:</b> '+t.nationality+'<br>':'')
+            + (t.city?'<b>City:</b> '+t.city+'<br>':'')
+            + (t.timezone?'<b>Time zone:</b> '+t.timezone+'<br>':'')
+            + (t.years_experience?'<b>Experience:</b> '+t.years_experience+' years<br>':'')
+            + (t.cefr_knowledge?'<b>CEFR:</b> '+t.cefr_knowledge+'<br>':'')
+            + (langs!=='—'?'<b>Languages:</b> '+langs+'<br>':'')
+            + (inds!=='—'?'<b>Industries:</b> '+inds:'')
+            + '</div></div>'
+            + '<div><div style="font-weight:700;font-size:11px;text-transform:uppercase;color:#1A3A5C;margin-bottom:6px">Certifications</div>'
+            + '<div style="font-size:12px;color:#555">'+certs+'</div>'
+            + (brings?'<div style="font-weight:700;font-size:11px;text-transform:uppercase;color:#1A3A5C;margin:10px 0 6px">What '+(t.full_name||"").split(" ")[0]+' brings</div><ul style="font-size:12px;color:#555;margin:0;padding-left:16px;line-height:1.7">'+brings+'</ul>':'')
+            + '</div></div>'
+            + '<div style="font-weight:700;font-size:11px;text-transform:uppercase;color:#1A3A5C;margin-bottom:8px">Programme eligibility</div>'
+            + '<div style="margin-bottom:10px">'+eligBadges+'</div>'
+            + (t.internal_notes?'<div style="font-weight:700;font-size:11px;text-transform:uppercase;color:#1A3A5C;margin-bottom:6px">Internal notes</div><div style="font-size:12px;color:#555;background:#FFF8E7;padding:8px 12px;border-radius:6px">'+t.internal_notes+'</div>':'')
+            + '</div>';
+        }
+
+        return '<div style="border-bottom:1px solid #f0f0f0"><div style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;transition:background .15s" onclick="expandedTrainer=expandedTrainer===\''+t.id+'\'?null:\''+t.id+'\';render()" onmouseover="this.style.background=\'#F8FAFC\'" onmouseout="this.style.background=\'\'">'+photo
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-weight:700;font-size:13px;color:#1A3A5C">'+(t.full_name||"")+'</div>'
+          + '<div style="font-size:11px;color:#888">'+(t.title||t.primary_specialization||"")+empBadge+'</div>'
+          + '</div>'
+          + '<div style="font-size:11px;color:#555;min-width:80px">'+(t.city||t.location||"")+'</div>'
+          + '<div style="display:flex;align-items:center;gap:4px;min-width:70px"><div style="width:8px;height:8px;border-radius:50%;background:'+statusColor+'"></div><span style="font-size:11px;color:#666">'+(t.status||"Active")+'</span></div>'
+          + '<i class="ti '+(isExp?"ti-chevron-up":"ti-chevron-down")+'" style="color:#aaa;font-size:16px"></i>'
+          + (t.isBuiltIn?"":'<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openTrainerForm(\''+t.id+'\')" style="margin-left:4px"><i class="ti ti-edit"></i></button>')
+          + (t.isBuiltIn?"":'<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteTrainer(\''+t.id+'\')" style="margin-left:2px"><i class="ti ti-trash"></i></button>')
+          + '</div>'
+          + detail + '</div>';
+      }).join('');
+
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+    + '<h2 style="font-size:18px;font-weight:700;color:'+N+'">Speaker profiles</h2>'
+    + '<button class="btn btn-primary btn-sm" onclick="openTrainerForm(null)"><i class="ti ti-user-plus"></i> Add trainer</button></div>'
+    + '<div style="position:relative;margin-bottom:14px"><i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:16px"></i>'
+    + '<input type="text" placeholder="Search by name, specialisation or location..." value="'+trainerSearch+'" oninput="trainerSearch=this.value;render()" style="padding-left:34px"></div>'
+    + '<div style="font-size:12px;color:#888;margin-bottom:8px">'+filtered.length+' trainer'+(filtered.length!==1?"s":"")+'</div>'
+    + '<div class="card" style="padding:0;overflow:hidden"><div style="display:flex;align-items:center;padding:8px 14px;background:#F0F3F7;border-bottom:1px solid #e0e4ea;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px"><div style="width:38px;flex-shrink:0"></div><div style="flex:1;padding-left:10px">Name & role</div><div style="min-width:80px">Location</div><div style="min-width:70px">Status</div><div style="width:100px"></div></div>'
+    + rows + '</div>';
+}
+
+// ── VIEW: TRAINER FORM ────────────────────────────────────────────────────────
+function openTrainerForm(id) {
+  trainerFormId = id;
+  navigate("trainer-form");
+}
+
+function vTrainerForm() {
+  var t = trainerFormId ? (allTrainers.find(function(x){return x.id===trainerFormId;})||{}) : {};
+  var isNew = !trainerFormId;
+  var eligObj = t.programme_eligibility || {};
+
+  var langRows = (Array.isArray(t.languages)&&t.languages.length) ? t.languages.map(function(l,i){
+    var lang = typeof l==='object'?(l.lang||""):l;
+    var level = typeof l==='object'?(l.level||""):"";
+    return '<div style="display:flex;gap:8px;margin-bottom:6px"><input type="text" id="lang-name-'+i+'" value="'+lang+'" placeholder="Language" style="flex:1"><input type="text" id="lang-level-'+i+'" value="'+level+'" placeholder="Proficiency" style="width:140px"></div>';
+  }).join('') : '<div style="display:flex;gap:8px;margin-bottom:6px"><input type="text" id="lang-name-0" placeholder="Language" style="flex:1"><input type="text" id="lang-level-0" placeholder="Proficiency" style="width:140px"></div>';
+
+  var eligChecks = PROG_ELIGIBILITY.map(function(prog) {
+    return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;font-weight:400">'
+      + '<input type="checkbox" id="elig-'+prog.replace(/[^a-z0-9]/gi,'_')+'" '+(eligObj[prog]?"checked":"")+' style="width:16px;height:16px">'
+      + prog + '</label>';
+  }).join('');
+
+  var bringsVal = Array.isArray(t.brings) ? t.brings.join('\n') : (t.brings||"");
+  var certsVal = Array.isArray(t.certifications) ? t.certifications.join('\n') : (t.certifications||"");
+  var indsVal = Array.isArray(t.industries) ? t.industries.join('\n') : (t.industries||"");
+  var secSpecVal = Array.isArray(t.secondary_specializations) ? t.secondary_specializations.join('\n') : (t.secondary_specializations||"");
+
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'
+    + '<button class="btn btn-ghost btn-sm" onclick="navigate(\'speakers\')"><i class="ti ti-arrow-left"></i> Back</button>'
+    + '<h2 style="font-size:18px;font-weight:700;color:'+N+'">'+(isNew?"Add new trainer":"Edit trainer")+'</h2></div>'
+
+    + '<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:13px;color:'+N+';margin-bottom:12px">Personal information</div>'
+    + '<div class="row2"><div><label>Full name *</label><input type="text" id="tf-name" value="'+(t.full_name||"").replace(/"/g,"&quot;")+'" placeholder="e.g. John Smith"></div>'
+    + '<div><label>Title / Role</label><input type="text" id="tf-title" value="'+(t.title||"").replace(/"/g,"&quot;")+'" placeholder="e.g. Leadership Coach"></div></div>'
+    + '<div class="row2"><div><label>Location / Country</label><input type="text" id="tf-location" value="'+(t.location||"").replace(/"/g,"&quot;")+'" placeholder="e.g. Malaysia"></div>'
+    + '<div><label>City</label><input type="text" id="tf-city" value="'+(t.city||"").replace(/"/g,"&quot;")+'" placeholder="e.g. Kuala Lumpur"></div></div>'
+    + '<div class="row2"><div><label>Time zone</label><input type="text" id="tf-tz" value="'+(t.timezone||"").replace(/"/g,"&quot;")+'" placeholder="e.g. UTC+8 (MYT)"></div>'
+    + '<div><label>Nationality</label><input type="text" id="tf-nat" value="'+(t.nationality||"").replace(/"/g,"&quot;")+'" placeholder="e.g. Malaysian"></div></div></div>'
+
+    + '<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:13px;color:'+N+';margin-bottom:12px">Employment details</div>'
+    + '<div class="row2"><div><label>Employment type</label><select id="tf-emptype"><option'+(t.employment_type==="Freelance"?" selected":"")+'>Freelance</option><option'+(t.employment_type==="Part-Time"?" selected":"")+'>Part-Time</option><option'+(t.employment_type==="Full-Time"?" selected":"")+'>Full-Time</option><option'+(t.employment_type==="Contract"?" selected":"")+'>Contract</option></select></div>'
+    + '<div><label>Status</label><select id="tf-status"><option'+(t.status==="Active"?" selected":"")+'>Active</option><option'+(t.status==="Inactive"?" selected":"")+'>Inactive</option><option'+(t.status==="On Leave"?" selected":"")+'>On Leave</option></select></div></div></div>'
+
+    + '<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:13px;color:'+N+';margin-bottom:12px">Expertise</div>'
+    + '<label>Primary specialisation</label><input type="text" id="tf-primary" value="'+(t.primary_specialization||"").replace(/"/g,"&quot;")+'" placeholder="e.g. Leadership Development">'
+    + '<label>Secondary specialisations (one per line)</label><textarea id="tf-secondary" placeholder="e.g. Executive Coaching&#10;Team Building">'+secSpecVal+'</textarea>'
+    + '<label>Industries experienced in (one per line)</label><textarea id="tf-industries" placeholder="e.g. Oil & Gas&#10;Financial Services">'+indsVal+'</textarea>'
+    + '<label>Years of experience</label><input type="number" id="tf-years" value="'+(t.years_experience||"")+'" placeholder="e.g. 10" style="width:120px">'
+    + '<label>Languages spoken (add below)</label>'
+    + '<div id="lang-rows">'+langRows+'</div>'
+    + '<button class="btn btn-ghost btn-sm" onclick="addLangRow()" style="margin-top:4px"><i class="ti ti-plus"></i> Add language</button>'
+    + '<label>CEFR knowledge (if applicable)</label><input type="text" id="tf-cefr" value="'+(t.cefr_knowledge||"").replace(/"/g,"&quot;")+'" placeholder="e.g. C2 English, B2 Mandarin">'
+    + '<label>Certifications (one per line)</label><textarea id="tf-certs" placeholder="e.g. HRDC Accredited Trainer&#10;ICF Certified Coach">'+certsVal+'</textarea>'
+    + '<label>What they bring (one per line)</label><textarea id="tf-brings" placeholder="e.g. Bridges senior leadership and junior teams&#10;Specialises in Design Thinking">'+bringsVal+'</textarea></div>'
+
+    + '<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:13px;color:'+N+';margin-bottom:12px">Programme eligibility</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 20px">'+eligChecks+'</div></div>'
+
+    + '<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:13px;color:'+N+';margin-bottom:8px">Speaker profile (for proposals)</div>'
+    + '<label>Opening quote</label><input type="text" id="tf-quote" value="'+(t.quote||"").replace(/"/g,"&quot;")+'" placeholder="A punchy one-liner that captures their energy...">'
+    + '<label>Bio</label><textarea id="tf-bio" style="min-height:90px" placeholder="2-3 paragraph profile...">'+((t.bio||"").replace(/</g,"&lt;"))+'</textarea></div>'
+
+    + '<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:13px;color:'+N+';margin-bottom:8px">Internal notes</div>'
+    + '<textarea id="tf-notes" placeholder="Availability, rate notes, special requirements...">'+((t.internal_notes||""))+'</textarea></div>'
+
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    + '<button class="btn btn-accent" onclick="submitTrainerForm()"><i class="ti ti-device-floppy"></i> '+(isNew?"Add trainer":"Save changes")+'</button>'
+    + '<button class="btn btn-ghost" onclick="navigate(\'speakers\')">Cancel</button></div>';
+}
+
+function addLangRow() {
+  var container = ge("lang-rows");
+  if (!container) return;
+  var idx = container.children.length;
+  var div = document.createElement("div");
+  div.style.cssText = "display:flex;gap:8px;margin-bottom:6px";
+  div.innerHTML = '<input type="text" id="lang-name-'+idx+'" placeholder="Language" style="flex:1"><input type="text" id="lang-level-'+idx+'" placeholder="Proficiency" style="width:140px">';
+  container.appendChild(div);
+}
+
+async function submitTrainerForm() {
+  var name = ge("tf-name") ? ge("tf-name").value.trim() : "";
+  if (!name) { showToast("Full name is required","err"); return; }
+
+  // Collect languages
+  var langs = []; var li = 0;
+  while (ge("lang-name-"+li)) {
+    var ln = ge("lang-name-"+li).value.trim();
+    var ll = ge("lang-level-"+li) ? ge("lang-level-"+li).value.trim() : "";
+    if (ln) langs.push(ll ? {lang:ln,level:ll} : ln);
+    li++;
+  }
+
+  // Collect programme eligibility
+  var elig = {};
+  PROG_ELIGIBILITY.forEach(function(prog) {
+    var el = ge("elig-"+prog.replace(/[^a-z0-9]/gi,'_'));
+    if (el) elig[prog] = el.checked;
+  });
+
+  function lines(id) {
+    var el = ge(id); if (!el) return [];
+    return el.value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  }
+
+  var data = {
+    id: trainerFormId || "",
+    created_at: Date.now(),
+    full_name: name,
+    title: ge("tf-title") ? ge("tf-title").value : "",
+    location: ge("tf-location") ? ge("tf-location").value : "",
+    city: ge("tf-city") ? ge("tf-city").value : "",
+    timezone: ge("tf-tz") ? ge("tf-tz").value : "",
+    nationality: ge("tf-nat") ? ge("tf-nat").value : "",
+    employment_type: ge("tf-emptype") ? ge("tf-emptype").value : "Freelance",
+    status: ge("tf-status") ? ge("tf-status").value : "Active",
+    primary_specialization: ge("tf-primary") ? ge("tf-primary").value : "",
+    secondary_specializations: lines("tf-secondary"),
+    industries: lines("tf-industries"),
+    languages: langs,
+    cefr_knowledge: ge("tf-cefr") ? ge("tf-cefr").value : "",
+    certifications: lines("tf-certs"),
+    years_experience: ge("tf-years") ? Number(ge("tf-years").value)||0 : 0,
+    programme_eligibility: elig,
+    internal_notes: ge("tf-notes") ? ge("tf-notes").value : "",
+    quote: ge("tf-quote") ? ge("tf-quote").value : "",
+    bio: ge("tf-bio") ? ge("tf-bio").value : "",
+    brings: lines("tf-brings")
+  };
+
+  var ok = await saveTrainer(data);
+  if (ok) { trainerFormId = null; navigate("speakers"); }
+}
+
 
 // ── VIEW: THE LEADERSHIP LAB ──────────────────────────────────────────────────
 function vProf() {
@@ -747,7 +976,7 @@ function vProf() {
 // ── VIEW: TLL STANDARD PROFILE ────────────────────────────────────────────────
 function vTllInfo() {
   var tp = JSON.parse(localStorage.getItem("tll_profile") || "{}");
-  return '<h2 style="font-size:18px;font-weight:700;color:' + N + ';margin-bottom:4px">TLL Standard Profile</h2>'
+  return '<h2 style="font-size:18px;font-weight:700;color:' + N + ';margin-bottom:4px">The Leadership Lab Profile Generator</h2>'
     + '<p style="font-size:12px;color:#888;margin-bottom:18px">Set your standard company profile text. Saved locally to your browser.</p>'
     + '<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:13px;color:' + N + ';margin-bottom:14px">About The Leadership Lab</div>'
     + '<label>Tagline</label><input type="text" id="tp-tag" value="' + (tp.tagline||"Shaping Leaders. Transforming Futures.").replace(/"/g,"&quot;") + '">'
@@ -759,7 +988,10 @@ function vTllInfo() {
     + '<div><label>Website</label><input type="text" id="tp-web" value="' + (tp.web||"www.leadershiplabtx.com") + '"></div></div>'
     + '<div class="row2"><div><label>Email</label><input type="text" id="tp-email" value="' + (tp.email||"info@leadershiplabtx.com") + '"></div>'
     + '<div><label>LinkedIn</label><input type="text" id="tp-linkedin" value="' + (tp.linkedin||"the-leadership-labtx") + '"></div></div></div>'
-    + '<button class="btn btn-primary" onclick="saveTllProfile()"><i class="ti ti-device-floppy"></i> Save profile</button>';
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">'
+    + '<button class="btn btn-primary" onclick="saveTllProfile()"><i class="ti ti-device-floppy"></i> Save profile</button>'
+    + '<button class="btn btn-accent" onclick="generateProfilePDF()"><i class="ti ti-file-download"></i> Generate PDF profile</button>'
+    + '</div>';
 }
 function saveTllProfile() {
   var tp = {tagline:ge("tp-tag")?ge("tp-tag").value:"",about:ge("tp-about")?ge("tp-about").value:"",
@@ -768,6 +1000,260 @@ function saveTllProfile() {
     email:ge("tp-email")?ge("tp-email").value:"",linkedin:ge("tp-linkedin")?ge("tp-linkedin").value:""};
   localStorage.setItem("tll_profile", JSON.stringify(tp));
   showToast("Profile saved!");
+}
+
+
+// ── PDF: PROFILE GENERATOR ───────────────────────────────────────────────────
+function generateProfilePDF() {
+  var tp = JSON.parse(localStorage.getItem("tll_profile") || "{}");
+  var logo64 = "data:image/png;base64,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";
+  var about = tp.about || "The Leadership Lab empowers leaders at all levels with the tools, insights, and strategies to lead effectively in today's fast-changing business world. Focused on leadership and communication, our programs challenge traditional thinking and encourage innovation. Led by experienced facilitators, each session delivers practical skills that drive real workplace impact. At The Leadership Lab, we don't just teach leadership — we live and communicate it.";
+  var mission = tp.mission || "Our mission is to equip leaders and professionals with the mindset, skills, and strategies to lead through complexity, spark innovation, and build strong connections. We deliver impactful programs that inspire bold thinking, resilience, and lasting success.";
+  var vision = tp.vision || "To be a global leader in leadership and communication development, shaping a future where leaders at all levels drive change, inspire growth, and create lasting impact in their organizations and communities.";
+  var phone = tp.phone || "+60 14 6248 386";
+  var web = tp.web || "www.leadershiplabtx.com";
+
+  var content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>TLL Profile</title><style>'
+    + '@page{margin:12mm;size:A4}'
+    + 'body{font-family:Arial,sans-serif;color:#222;margin:0;padding:0;font-size:13px}'
+    + 'h1{font-size:28px;font-weight:900;color:#1A3A5C;letter-spacing:1px;margin:0}'
+    + 'h2{font-size:16px;font-weight:700;color:#1A3A5C;margin:0 0 8px}'
+    + 'h3{font-size:13px;font-weight:700;color:#2E86C1;margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px}'
+    + 'p{margin:0 0 8px;line-height:1.6}'
+    + '.cover{text-align:center;padding:40px 20px 30px;border-bottom:4px solid #1A3A5C;margin-bottom:24px}'
+    + '.tagline{font-size:11px;letter-spacing:3px;color:#2E86C1;margin:6px 0 0}'
+    + '.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}'
+    + '.box{padding:14px 16px;border-radius:8px}'
+    + '.box-navy{background:#1A3A5C;color:#fff}.box-navy h2{color:#fff}'
+    + '.box-blue{background:#2E86C1;color:#fff}.box-blue h2{color:#fff}'
+    + '.section{margin-bottom:20px}'
+    + '.pillars{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}'
+    + '.pillar{border:1px solid #e0e4ea;border-radius:6px;padding:10px 12px;border-left:4px solid #1A3A5C}'
+    + '.pillar-title{font-weight:700;font-size:12px;color:#1A3A5C;margin-bottom:4px}'
+    + '.pillar-body{font-size:11px;color:#555;line-height:1.5}'
+    + '.why-list{margin:0;padding:0 0 0 16px;line-height:1.8}'
+    + '.deliver-list{margin:0;padding:0 0 0 16px;line-height:1.8}'
+    + '.footer{border-top:2px solid #1A3A5C;padding-top:14px;display:flex;justify-content:space-between;align-items:center;margin-top:24px}'
+    + '.footer-item{font-size:11px;color:#555}'
+    + '.footer-item strong{color:#1A3A5C}'
+    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    + '</style></head><body>'
+
+    // Cover
+    + '<div class="cover">'
+    + '<img src="' + logo64 + '" style="width:160px;margin-bottom:12px">'
+    + '<h1>THE LEADERSHIP LAB</h1>'
+    + '<div class="tagline">SHAPING LEADERS. TRANSFORMING FUTURES.</div>'
+    + '</div>'
+
+    // Who We Are
+    + '<div class="section"><h2>ABOUT US — WHO WE ARE</h2><p>' + about + '</p></div>'
+
+    // Vision & Mission
+    + '<div class="two-col">'
+    + '<div class="box box-navy"><h2>VISION</h2><p style="color:rgba(255,255,255,.9);font-size:12px;line-height:1.6">' + vision + '</p></div>'
+    + '<div class="box box-blue"><h2>MISSION</h2><p style="color:rgba(255,255,255,.9);font-size:12px;line-height:1.6">' + mission + '</p></div>'
+    + '</div>'
+
+    // What We Offer
+    + '<div class="section"><h2 style="margin-bottom:12px">WHAT WE OFFER</h2>'
+    + '<div class="pillars">'
+    + '<div class="pillar"><div class="pillar-title">MAVERICK CODE</div><div class="pillar-body">Empower bold, values-driven leaders who create change — not follow it. Encourage independent thinking, risk-taking, and authentic decision-making.</div></div>'
+    + '<div class="pillar"><div class="pillar-title">UNCONVENTIONAL LEADERSHIP</div><div class="pillar-body">Mindfulness-based leadership. Authenticity, empathy, and real world reflection for deeper self-awareness and non-traditional growth.</div></div>'
+    + '<div class="pillar"><div class="pillar-title">POWER SKILLS TRAINING</div><div class="pillar-body">Build core soft skills your team needs to thrive. Enhance adaptability, trust, and engagement through communication, storytelling, and executive presence.</div></div>'
+    + '<div class="pillar"><div class="pillar-title">BITE-SIZE LEADERSHIP PROGRAMS</div><div class="pillar-body">Short, focused learning sessions: Emotional Intelligence, Communication & Feedback, Conflict Management, Leading Through Change, Team Collaboration.</div></div>'
+    + '</div></div>'
+
+    // Two column: Why Teams Love Us + How We Deliver
+    + '<div class="two-col">'
+    + '<div><h3>WHY TEAMS LOVE US</h3><ul class="why-list"><li>Experiential, hands-on learning</li><li>Tailored content that speaks to your culture</li><li>Facilitators who connect, not just lecture</li><li>Practical takeaways your team can use immediately</li></ul></div>'
+    + '<div><h3>HOW WE DELIVER</h3><ul class="deliver-list"><li>In-person or virtual facilitation</li><li>Interactive, experience-based learning</li><li>Designed for corporate teams, managers, and emerging leaders</li><li>Customizable to your industry and goals</li></ul></div>'
+    + '</div>'
+
+    // Footer
+    + '<div class="footer">'
+    + '<div class="footer-item"><i>\"Empowering Leaders. Transforming Organizations\"</i></div>'
+    + '<div class="footer-item"><strong>Phone:</strong> ' + phone + ' &nbsp;|&nbsp; <strong>Web:</strong> ' + web + '</div>'
+    + '</div>'
+
+    + '</body></html>';
+
+  var win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(content);
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 600);
+}
+
+// ── PDF: PROPOSAL GENERATOR ──────────────────────────────────────────────────
+function generateProposalPDF() {
+  if (!form.clientName) { showToast("Please fill in client details first (Step 1).", "err"); return; }
+  var logo64 = "data:image/png;base64,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";
+  var today = new Date().toLocaleDateString("en-MY",{day:"numeric",month:"long",year:"numeric"});
+  var tp = JSON.parse(localStorage.getItem("tll_profile") || "{}");
+  var skeys = getSubKeys();
+
+  // Build programme content sections
+  var progSections = skeys.map(function(key) {
+    var parts = key.split("_"); var pid = parts[0]; var sid = parts.slice(1).join("_");
+    var pr = PROGS.find(function(p) { return p.id===pid; });
+    var sub = pr ? (pr.subs||[]).find(function(s) { return s.id===sid; }) : null;
+    if (!sub) return "";
+    var dur = (form.durations||{})[key] || "1 Day";
+    var rate = (form.rates||{})[key];
+    var rateStr = (!rate||rate==="custom") ? (fmt((form.customRates||{})[key]||0)) : fmt(Number(rate));
+    return '<div style="margin-bottom:20px;padding:14px 16px;border:1px solid #e0e4ea;border-radius:8px;border-left:4px solid #1A3A5C;page-break-inside:avoid">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+      + '<div><div style="font-weight:700;font-size:14px;color:#1A3A5C">' + sub.name + '</div>'
+      + '<div style="font-size:11px;color:#888;margin-top:2px">' + pr.name + ' &nbsp;|&nbsp; ' + dur + '</div></div>'
+      + '<div style="font-weight:700;font-size:14px;color:#2E86C1;white-space:nowrap">' + rateStr + '</div></div>'
+      + '<p style="font-size:12px;color:#444;line-height:1.6;margin:0">' + sub.desc + '</p>'
+      + '</div>';
+  }).join('');
+
+  // Cost table rows
+  var costRows = skeys.map(function(key) {
+    var parts = key.split("_"); var pid = parts[0]; var sid = parts.slice(1).join("_");
+    var pr = PROGS.find(function(p) { return p.id===pid; });
+    var sub = pr ? (pr.subs||[]).find(function(s) { return s.id===sid; }) : null;
+    if (!sub) return "";
+    var dur = (form.durations||{})[key] || "1 Day";
+    var rate = (form.rates||{})[key];
+    var rateStr = (!rate||rate==="custom") ? (fmt((form.customRates||{})[key]||0)) : fmt(Number(rate));
+    return '<tr><td style="padding:8px 12px;font-weight:600">' + sub.name + '</td>'
+      + '<td style="padding:8px 12px;color:#555">' + pr.name + '</td>'
+      + '<td style="padding:8px 12px;text-align:center;color:#555">' + dur + '</td>'
+      + '<td style="padding:8px 12px;text-align:right;font-weight:700;color:#1A3A5C">' + rateStr + '</td></tr>';
+  }).join('');
+
+  var total = fmt(calcTotal(form));
+
+  // Facilitator brief profiles
+  var facCards = (form.selectedFacs||[]).map(function(id) {
+    var f = FACS.find(function(x) { return x.id===id; }); if (!f) return "";
+    return '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px">'
+      + (f.photo?'<img src="'+f.photo+'" style="width:56px;height:56px;object-fit:cover;border-radius:50%;flex-shrink:0">':'<div style="width:56px;height:56px;border-radius:50%;background:#1A3A5C;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;flex-shrink:0">'+f.name.split(" ").map(function(w){return w[0];}).slice(0,2).join("")+'</div>')
+      + '<div><div style="font-weight:700;font-size:13px;color:#1A3A5C">' + f.name + '</div>'
+      + '<div style="font-size:11px;color:#888">' + f.title + ' — ' + f.loc + '</div>'
+      + '<div style="font-size:11px;color:#666;margin-top:4px;font-style:italic">&ldquo;' + f.quote + '&rdquo;</div>'
+      + '<div style="font-size:11px;color:#555;margin-top:3px">' + f.creds.slice(0,2).join(' &nbsp;|&nbsp; ') + '</div></div></div>';
+  }).join('');
+
+  // Delivery mode badge color
+  var modeColor = form.deliveryMode === "Virtual" ? "#2E86C1" : form.deliveryMode === "Hybrid" ? "#E67E22" : "#27AE60";
+
+  var content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>TLL Proposal - ' + form.clientName + '</title><style>'
+    + '@page{margin:14mm;size:A4}'
+    + 'body{font-family:Arial,sans-serif;color:#222;margin:0;padding:0;font-size:13px}'
+    + 'h1,h2,h3{margin:0}'
+    + 'p{margin:0 0 8px;line-height:1.65}'
+    + '.page-break{page-break-before:always}'
+    + '.cover{min-height:100vh;display:flex;flex-direction:column;justify-content:space-between;padding:20px 0}'
+    + '.cover-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px}'
+    + '.cover-logo-area{text-align:center;flex:1;padding:20px}'
+    + '.cover-title{text-align:right;margin-bottom:20px}'
+    + '.cover-footer{border-top:2px solid #1A3A5C;padding-top:12px;display:flex;justify-content:space-between;font-size:11px;color:#555}'
+    + '.section-header{background:#1A3A5C;color:#fff;padding:10px 16px;border-radius:6px;margin-bottom:14px}'
+    + '.section-header h2{color:#fff;font-size:16px;font-weight:700;letter-spacing:.5px}'
+    + '.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}'
+    + '.box-navy{background:#1A3A5C;color:#fff;padding:14px 16px;border-radius:8px}'
+    + '.box-blue{background:#EBF5FB;border:1px solid #2E86C1;padding:14px 16px;border-radius:8px}'
+    + '.cost-table{width:100%;border-collapse:collapse;margin-bottom:14px}'
+    + '.cost-table thead tr{background:#1A3A5C;color:#fff}'
+    + '.cost-table thead td{padding:8px 12px;font-weight:700;font-size:12px}'
+    + '.cost-table tbody tr:nth-child(even){background:#F0F3F7}'
+    + '.cost-total{background:#1A3A5C;color:#fff;padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}'
+    + '.tag-box{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}'
+    + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page-break{page-break-before:always}}'
+    + '</style></head><body>'
+
+    // ── COVER PAGE ──────────────────────────────────────────────────────────
+    + '<div class="cover">'
+    + '<div class="cover-top">'
+    + '<div><div style="font-size:11px;font-weight:600;color:#555">Date</div><div style="font-size:14px;font-weight:700;color:#1A3A5C">' + today + '</div>'
+    + '<div style="margin-top:16px;font-size:11px;font-weight:600;color:#555">Prepared for:</div>'
+    + '<div style="font-size:20px;font-weight:900;color:#1A3A5C;margin-top:6px">' + form.clientName + '</div>'
+    + (form.industry ? '<div style="font-size:12px;color:#888">' + form.industry + '</div>' : '')
+    + (form.contactPerson ? '<div style="font-size:12px;color:#555;margin-top:4px">' + form.contactPerson + (form.contactEmail?' &nbsp;|&nbsp; '+form.contactEmail:'') + '</div>' : '')
+    + '</div>'
+    + '<div style="text-align:right">'
+    + '<div style="font-size:11px;color:#555;margin-bottom:4px">Prepared by</div>'
+    + '<div style="font-size:14px;font-weight:700;color:#1A3A5C">The Leadership Lab</div>'
+    + '<div style="font-size:11px;color:#888">leadershiplabtx.com</div>'
+    + '</div></div>'
+
+    + '<div style="text-align:center;padding:30px 0">'
+    + '<img src="' + logo64 + '" style="width:200px;margin-bottom:16px">'
+    + '</div>'
+
+    + '<div style="text-align:right;margin-bottom:20px">'
+    + '<div style="font-size:22px;font-weight:900;color:#1A3A5C;letter-spacing:1px">LEADERSHIP DEVELOPMENT</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#1A3A5C;letter-spacing:1px">JOURNEY PROPOSAL</div>'
+    + '</div>'
+
+    + '<div class="cover-footer">'
+    + '<div><strong>Website:</strong> www.leadershiplabtx.com</div>'
+    + '<div><strong>Phone:</strong> +60 14 6248 386</div>'
+    + '<div><strong>Prepared by:</strong> The Leadership Lab</div>'
+    + '</div></div>'
+
+    // ── PAGE 2: ABOUT TLL ──────────────────────────────────────────────────
+    + '<div class="page-break">'
+    + '<div class="section-header"><h2>ABOUT THE LEADERSHIP LAB</h2></div>'
+    + '<p>' + (tp.about||"The Leadership Lab empowers leaders at all levels with the tools, insights, and strategies to lead effectively in today's fast-changing business world. Our programs challenge traditional thinking and encourage innovation. Led by experienced facilitators, each session delivers practical skills that drive real workplace impact.") + '</p>'
+    + '<div class="two-col" style="margin-top:16px">'
+    + '<div class="box-navy"><div style="font-weight:700;font-size:13px;color:#fff;margin-bottom:8px">Mission</div><p style="color:rgba(255,255,255,.9);font-size:12px;margin:0;line-height:1.6">' + (tp.mission||"To equip leaders and professionals with the mindset, skills, and strategies to lead through complexity, spark innovation, and build strong connections.") + '</p></div>'
+    + '<div class="box-blue"><div style="font-weight:700;font-size:13px;color:#1A3A5C;margin-bottom:8px">Vision</div><p style="color:#444;font-size:12px;margin:0;line-height:1.6">' + (tp.vision||"To be a global leader in leadership and communication development, shaping a future where leaders at all levels drive change, inspire growth, and create lasting impact.") + '</p></div>'
+    + '</div>'
+
+    // Proposal scope summary box
+    + '<div style="margin-top:20px;background:#F0F3F7;border-radius:8px;padding:14px 16px">'
+    + '<div style="font-weight:700;font-size:13px;color:#1A3A5C;margin-bottom:10px">Proposal Scope</div>'
+    + '<div style="font-size:12px;line-height:1.9;color:#333">'
+    + '<b>Client:</b> ' + form.clientName + (form.industry?' &nbsp;&middot;&nbsp; <b>Industry:</b> '+form.industry:'') + '<br>'
+    + '<b>Participants:</b> ' + (form.participants||'TBC') + (form.deliveryMode?' &nbsp;&middot;&nbsp; <b>Delivery:</b> <span style="background:'+modeColor+';color:#fff;padding:1px 8px;border-radius:10px;font-size:11px">'+form.deliveryMode+'</span>':'') + '<br>'
+    + (form.startDate ? '<b>Proposed start:</b> ' + form.startDate + '<br>' : '')
+    + '<b>Programmes:</b> ' + skeys.length + ' programme' + (skeys.length!==1?"s":"") + ' selected'
+    + '</div></div></div>'
+
+    // ── PAGE 3: PROGRAMME CONTENT ──────────────────────────────────────────
+    + (skeys.length > 0 ? '<div class="page-break"><div class="section-header"><h2>PROGRAMME CONTENT</h2></div>' + progSections + '</div>' : '')
+
+    // ── PAGE 4: FACILITATORS ───────────────────────────────────────────────
+    + ((form.selectedFacs||[]).length > 0 ? '<div class="page-break"><div class="section-header"><h2>FACILITATOR PROFILES</h2></div><p style="margin-bottom:14px;font-size:12px;color:#555">The Leadership Lab can deploy any of the following facilitators across the workshop and coaching components of this journey.</p>' + facCards + '</div>' : '')
+
+    // ── COST BREAKDOWN ─────────────────────────────────────────────────────
+    + (skeys.length > 0 ? '<div class="page-break"><div class="section-header"><h2>COST BREAKDOWN — ' + (form.deliveryMode||'').toUpperCase() + '</h2></div>'
+    + '<table class="cost-table"><thead><tr><td>Programme</td><td>Pillar</td><td style="text-align:center">Duration</td><td style="text-align:right">Investment (RM)</td></tr></thead><tbody>' + costRows + '</tbody></table>'
+    + '<div class="cost-total"><span style="font-size:14px;font-weight:600">Total Investment</span><span style="font-size:18px;font-weight:700">' + total + '</span></div>'
+    + '<p style="font-size:11px;color:#777;margin-top:10px;line-height:1.5"><em>Note: Figures reflect programme delivery fees only. Venue, travel, accommodation, and logistics costs will be confirmed separately based on the chosen delivery format. All fees are exclusive of prevailing taxes. The Leadership Lab is a fully HRDC claimable organisation.</em></p>'
+    + '</div>' : '')
+
+    // ── NEXT STEPS ─────────────────────────────────────────────────────────
+    + '<div class="page-break"><div class="section-header"><h2>NEXT STEPS</h2></div>'
+    + (form.nextSteps ? '<p>' + form.nextSteps + '</p>' : '')
+    + '<table style="width:100%;border-collapse:collapse;margin-top:12px">'
+    + '<thead><tr style="background:#1A3A5C;color:#fff"><td style="padding:8px 12px;font-weight:700">Step</td><td style="padding:8px 12px;font-weight:700">Action</td><td style="padding:8px 12px;font-weight:700">Owner</td></tr></thead>'
+    + '<tbody>'
+    + '<tr style="background:#F0F3F7"><td style="padding:8px 12px">1</td><td style="padding:8px 12px">Review this proposal and confirm scope</td><td style="padding:8px 12px">' + form.clientName + '</td></tr>'
+    + '<tr><td style="padding:8px 12px">2</td><td style="padding:8px 12px">Confirm preferred facilitator(s)</td><td style="padding:8px 12px">' + form.clientName + '</td></tr>'
+    + '<tr style="background:#F0F3F7"><td style="padding:8px 12px">3</td><td style="padding:8px 12px">Finalise delivery format and dates</td><td style="padding:8px 12px">Both parties</td></tr>'
+    + '<tr><td style="padding:8px 12px">4</td><td style="padding:8px 12px">Formalise engagement via signed contract</td><td style="padding:8px 12px">Both parties</td></tr>'
+    + '</tbody></table>'
+    + '<div style="margin-top:28px;text-align:center;padding:20px;border-top:2px solid #1A3A5C">'
+    + '<img src="' + logo64 + '" style="width:120px;margin-bottom:12px">'
+    + '<div style="font-size:18px;font-weight:900;color:#1A3A5C;letter-spacing:1px">THANK YOU</div>'
+    + '<div style="font-size:12px;color:#555;margin-top:6px">We look forward to a potential collaboration.</div>'
+    + '<div style="font-size:11px;color:#888;margin-top:10px">+60 14 6248 386 &nbsp;|&nbsp; www.leadershiplabtx.com &nbsp;|&nbsp; the-leadership-labtx</div>'
+    + '</div></div>'
+
+    + '</body></html>';
+
+  var win = window.open('', '_blank', 'width=1000,height=800');
+  win.document.write(content);
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 800);
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
