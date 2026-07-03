@@ -275,13 +275,16 @@ var MODES = ["In-Person","Virtual","Hybrid"];
 var DURS = ["Half Day (4 hrs)","1 Day","2 Days","3 Days","4 Days","5 Days","Custom"];
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
-function fmt(n) { return "RM " + Number(n).toLocaleString(); }
+function fmt(n, cur) {
+  var c = cur || (typeof form !== "undefined" && form && form.currency) || "MYR";
+  return (c === "USD" ? "US$ " : "RM ") + Number(n).toLocaleString();
+}
 function dStr(ts) { return new Date(ts).toLocaleDateString("en-MY",{day:"numeric",month:"short",year:"numeric"}); }
 function uid() { return "p_" + Date.now() + "_" + Math.random().toString(36).slice(2,6); }
 function ge(id) { return document.getElementById(id); }
 function initForm() {
   return {clientName:"",industry:"",contactPerson:"",contactEmail:"",phone:"",
-    participants:"",deliveryMode:"In-Person",startDate:"",
+    participants:"",deliveryMode:"In-Person",startDate:"",currency:"MYR",clientNotes:"",
     selectedProgs:[],selectedSubs:{},durations:{},rates:{},customRates:{},
     selectedFacs:[],notes:"",nextSteps:"",status:"Draft"};
 }
@@ -419,7 +422,8 @@ async function loadProposals() {
         participants:p.participants||"", deliveryMode:p.delivery_mode||"In-Person", startDate:p.start_date||"",
         selectedProgs:p.selected_progs||[], selectedSubs:p.topics||{}, durations:{},
         rates:p.rates||{}, customRates:p.custom_rates||{}, selectedFacs:p.selected_facs||[],
-        notes:p.notes||"", nextSteps:p.next_steps||"", status:p.status||"Draft"};
+        notes:p.notes||"", nextSteps:p.next_steps||"", status:p.status||"Draft",
+        currency:p.currency||"MYR", clientNotes:p.client_notes||""};
     });
   }
   render();
@@ -434,6 +438,7 @@ async function saveProposal() {
     selected_progs:form.selectedProgs, topics:form.selectedSubs,
     selected_facs:form.selectedFacs, rates:form.rates, custom_rates:form.customRates,
     notes:form.notes, next_steps:form.nextSteps, status:form.status,
+    currency:form.currency||"MYR", client_notes:form.clientNotes||"",
     created_by:currentUser ? currentUser.id : null
   });
   if (r.error) { showToast("Save failed: " + r.error.message, "err"); }
@@ -518,6 +523,8 @@ function nextStep() {
     form.participants = ge("f-pa") ? ge("f-pa").value : "";
     form.deliveryMode = ge("f-dm") ? ge("f-dm").value : "In-Person";
     form.startDate = ge("f-sd") ? ge("f-sd").value : "";
+    form.currency = ge("f-cur") ? ge("f-cur").value : "MYR";
+    form.clientNotes = ge("f-cbg") ? ge("f-cbg").value : "";
   }
   if (step === 4) {
     form.notes = ge("f-no") ? ge("f-no").value : "";
@@ -555,7 +562,7 @@ function vDash() {
     : proposals.slice(0,6).map(function(p) {
         return '<div class="hrow"><div style="flex:1;min-width:160px"><div style="font-weight:700;font-size:13px;color:' + N + '">' + (p.clientName||"Unnamed") + '</div><div style="font-size:11px;color:#888">' + (p.industry||"") + ' &middot; ' + dStr(p.createdAt) + '</div></div>'
           + '<span class="tag ' + badgeClass(p.status) + '">' + p.status + '</span>'
-          + '<div style="font-weight:700;font-size:12px;color:' + N + ';min-width:80px;text-align:right">' + fmt(calcTotal(p)) + '</div>'
+          + '<div style="font-weight:700;font-size:12px;color:' + N + ';min-width:80px;text-align:right">' + fmt(calcTotal(p), p.currency) + '</div>'
           + '<button class="btn btn-ghost btn-sm" onclick="dupeProp(\'' + p.id + '\')">Duplicate</button></div>';
       }).join('');
   var pills = PROGS.filter(function(pr) { return pr.id !== "custom"; }).map(function(pr) {
@@ -587,7 +594,14 @@ function vWiz() {
       + '<div class="row2"><div><label>Phone</label><input type="text" id="f-ph" value="' + (form.phone||"").replace(/"/g,"&quot;") + '"></div>'
       + '<div><label>Participants</label><input type="number" id="f-pa" value="' + (form.participants||"") + '"></div></div>'
       + '<div class="row2"><div><label>Delivery mode</label><select id="f-dm">' + MODES.map(function(m) { return '<option' + (form.deliveryMode===m?" selected":"") + '>' + m + '</option>'; }).join('') + '</select></div>'
-      + '<div><label>Start date</label><input type="date" id="f-sd" value="' + (form.startDate||"") + '"></div></div>';
+      + '<div><label>Start date</label><input type="date" id="f-sd" value="' + (form.startDate||"") + '"></div></div>'
+      + '<div class="row2"><div><label>Currency</label><select id="f-cur">'
+      + '<option value="MYR"' + (form.currency!=="USD"?" selected":"") + '>MYR &mdash; Malaysian Ringgit (RM)</option>'
+      + '<option value="USD"' + (form.currency==="USD"?" selected":"") + '>USD &mdash; US Dollar (US$)</option>'
+      + '</select></div>'
+      + '<div style="display:flex;align-items:flex-end"><div style="font-size:11px;color:#888;padding-bottom:11px">Rates, totals, and the proposal will display in this currency.</div></div></div>'
+      + '<label>Company background / research notes <span style="font-weight:400;color:#888">(optional &mdash; appears in the proposal)</span></label>'
+      + '<textarea id="f-cbg" style="min-height:96px" placeholder="What your team knows about this client: their industry context, leadership challenges, why now. This appears as an \'Understanding [Client]\' page in the proposal, just like your Canva template.">' + (form.clientNotes||"").replace(/</g,"&lt;") + '</textarea>';
 
   } else if (step === 2) {
     body = '<p style="font-size:12px;color:#666;margin-bottom:12px">Select a pillar then choose specific programmes under it.</p>';
@@ -649,7 +663,7 @@ function vWiz() {
           if (!sub) return "";
           var cv = (form.rates||{})[key];
           var dur = (form.durations||{})[key] || "1 Day";
-          var rateOpts = RATES.map(function(r) { return '<option value="' + r.v + '"' + (cv==r.v?" selected":"") + '>' + r.l + '</option>'; }).join('');
+          var rateOpts = RATES.map(function(r) { return '<option value="' + r.v + '"' + (cv==r.v?" selected":"") + '>' + (r.v==="custom" ? "Custom" : fmt(r.v)) + '</option>'; }).join('');
           var durOpts = DURS.map(function(d) { return '<option' + (d===dur?" selected":"") + '>' + d + '</option>'; }).join('');
           var amtBox = cv === "custom"
             ? '<input type="number" placeholder="Enter amount" value="' + ((form.customRates||{})[key]||"") + '" style="width:120px" oninput="form.customRates=form.customRates||{};form.customRates[\'' + key + '\']=this.value;var el=document.getElementById(\'total-disp\');if(el)el.textContent=fmt(calcTotal(form))">'
@@ -703,7 +717,7 @@ function vHist() {
           + '<div style="font-size:11px;color:#555;margin-top:2px">' + (prNames||"") + '</div></div>'
           + '<select style="padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px;width:90px" onchange="updateStatus(\'' + p.id + '\',this.value)">' + sOpts + '</select>'
           + '<span class="tag ' + badgeClass(p.status) + '">' + p.status + '</span>'
-          + '<div style="font-weight:700;font-size:12px;color:' + N + ';min-width:80px;text-align:right">' + fmt(calcTotal(p)) + '</div>'
+          + '<div style="font-weight:700;font-size:12px;color:' + N + ';min-width:80px;text-align:right">' + fmt(calcTotal(p), p.currency) + '</div>'
           + '<button class="btn btn-ghost btn-sm" onclick="dupeProp(\'' + p.id + '\')"><i class="ti ti-copy"></i></button>'
           + '<button class="btn btn-danger btn-sm" onclick="deleteProposal(\'' + p.id + '\')"><i class="ti ti-trash"></i></button></div>';
       }).join('');
@@ -1271,6 +1285,14 @@ function generateProposalPDF() {
     + '</tr></table>'
     + canvaWaves() + '</div>'
 
+    // ── UNDERSTANDING THE CLIENT (team research notes) ──
+    + (form.clientNotes && form.clientNotes.trim()
+        ? '<div class="page">'
+          + '<h1 class="big">Understanding ' + form.clientName + '</h1>'
+          + '<p>' + form.clientNotes.replace(/</g,"&lt;").replace(/\n/g,'<br>') + '</p>'
+          + canvaWaves() + '</div>'
+        : '')
+
     // ── PROPOSAL SCOPE / PROPOSED INTERVENTIONS ──
     + '<div class="page">'
     + '<h1 class="big">Proposed Leadership Interventions</h1>'
@@ -1304,10 +1326,10 @@ function generateProposalPDF() {
     // ── INVESTMENT ──
     + (skeys.length > 0 ? '<div class="flow"><h1 class="big">Investment</h1>'
     + '<div class="grad-bar"></div>'
-    + '<table class="inv-table"><thead><tr><td>Programme</td><td>Pillar</td><td style="text-align:center">Duration</td><td style="text-align:right">Investment (RM)</td></tr></thead><tbody>' + costRows + '</tbody></table>'
+    + '<table class="inv-table"><thead><tr><td>Programme</td><td>Pillar</td><td style="text-align:center">Duration</td><td style="text-align:right">Investment (' + (form.currency==="USD"?"USD":"RM") + ')</td></tr></thead><tbody>' + costRows + '</tbody></table>'
     + '<div class="inv-total"><span>Total Investment' + (form.deliveryMode ? ' \u2014 ' + form.deliveryMode : '') + '</span><span class="inv-amount">' + total + '</span></div>'
     + '<div class="grad-bar" style="margin-top:14px"></div>'
-    + '<p class="inv-note"><i>Note: Figures reflect programme delivery fees only. Venue, travel, accommodation, and logistics costs will be confirmed separately based on the chosen delivery format. All fees are exclusive of prevailing taxes. The Leadership Lab is a fully HRDC claimable organisation.</i></p>'
+    + '<p class="inv-note"><i>Note: Figures reflect programme delivery fees only. Venue, travel, accommodation, and logistics costs will be confirmed separately based on the chosen delivery format. All fees are exclusive of prevailing taxes.' + (form.currency==="USD" ? '' : ' The Leadership Lab is a fully HRDC claimable organisation.') + '</i></p>'
     + '</div>' : '')
 
     // ── NEXT STEPS ──
