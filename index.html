@@ -677,7 +677,7 @@ function vWiz() {
   }
 
   var backBtn = step===1?'<button class="btn btn-ghost" onclick="navigate(\'dashboard\')">Cancel</button>':'<button class="btn btn-ghost" onclick="prevStep()">&larr; Back</button>';
-  var nextBtn = step<4?'<button class="btn btn-primary" onclick="nextStep()">Continue &rarr;</button>':'<div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="generateProposalPDF()"><i class="ti ti-file-download"></i> Preview PDF</button><button class="btn btn-accent" onclick="saveProposal()"><i class="ti ti-device-floppy"></i> Save proposal</button></div>';
+  var nextBtn = step<4?'<button class="btn btn-primary" onclick="nextStep()">Continue &rarr;</button>':'<div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="generateProposalPDF()"><i class="ti ti-edit"></i> Preview &amp; edit</button><button class="btn btn-accent" onclick="saveProposal()"><i class="ti ti-device-floppy"></i> Save proposal</button></div>';
   return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><h2 style="font-size:18px;font-weight:700;color:' + N + '">New proposal</h2><span style="font-size:12px;color:#888">Step ' + step + ' of 4 &mdash; ' + steps[step-1] + '</span></div>'
     + '<div style="display:flex;gap:4px;margin-bottom:6px">' + bars + '</div>'
     + '<div style="display:flex;justify-content:space-between;margin-bottom:18px">' + labs + '</div>'
@@ -1045,21 +1045,47 @@ function vTllInfo() {
     + '<div class="row2"><div><label>Phone</label><input type="text" id="tp-phone" value="' + (tp.phone||"+60 14 6248 386") + '"></div>'
     + '<div><label>Website</label><input type="text" id="tp-web" value="' + (tp.web||"www.leadershiplabtx.com") + '"></div></div>'
     + '<div class="row2"><div><label>Email</label><input type="text" id="tp-email" value="' + (tp.email||"info@leadershiplabtx.com") + '"></div>'
-    + '<div><label>LinkedIn</label><input type="text" id="tp-linkedin" value="' + (tp.linkedin||"the-leadership-labtx") + '"></div></div></div>'
+    + '<div><label>LinkedIn</label><input type="text" id="tp-linkedin" value="' + (tp.linkedin||"the-leadership-labtx") + '"></div></div>'
+    + '<label>Canva template link (optional)</label><input type="text" id="tp-canva" value="' + (tp.canva||"").replace(/"/g,"&quot;") + '" placeholder="https://www.canva.com/design/... — adds an Open Canva template button to document previews"></div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">'
     + '<button class="btn btn-primary" onclick="saveTllProfile()"><i class="ti ti-device-floppy"></i> Save profile</button>'
-    + '<button class="btn btn-accent" onclick="generateProfilePDF()"><i class="ti ti-file-download"></i> Generate PDF profile</button>'
+    + '<button class="btn btn-accent" onclick="generateProfilePDF()"><i class="ti ti-edit"></i> Preview &amp; edit profile</button>'
     + '</div>';
 }
 function saveTllProfile() {
   var tp = {tagline:ge("tp-tag")?ge("tp-tag").value:"",about:ge("tp-about")?ge("tp-about").value:"",
     mission:ge("tp-mission")?ge("tp-mission").value:"",vision:ge("tp-vision")?ge("tp-vision").value:"",
     phone:ge("tp-phone")?ge("tp-phone").value:"",web:ge("tp-web")?ge("tp-web").value:"",
-    email:ge("tp-email")?ge("tp-email").value:"",linkedin:ge("tp-linkedin")?ge("tp-linkedin").value:""};
+    email:ge("tp-email")?ge("tp-email").value:"",linkedin:ge("tp-linkedin")?ge("tp-linkedin").value:"",
+    canva:ge("tp-canva")?ge("tp-canva").value.trim():""};
   localStorage.setItem("tll_profile", JSON.stringify(tp));
   showToast("Profile saved!");
 }
 
+
+// ── EDITABLE PREVIEW HELPERS ─────────────────────────────────────────────────
+function editToolbar(canvaUrl) {
+  return '<div class="tll-toolbar">'
+    + '<span style="font-size:13px;font-weight:600;color:#1A3A5C">&#9998; Click any text below to edit it, then download when you\'re happy</span>'
+    + '<span style="flex:1"></span>'
+    + '<button onclick="tllPDF()" style="background:#1A3A5C;color:#fff">&#128196; Download PDF</button>'
+    + '<button onclick="tllWord()" style="background:#2E86C1;color:#fff">&#128221; Download Word</button>'
+    + '<button onclick="tllCopy()" style="background:#fff;color:#1A3A5C;border:1.5px solid #1A3A5C">Copy text for Canva</button>'
+    + (canvaUrl ? '<a href="' + canvaUrl + '" target="_blank" style="background:#8B3DFF;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Arial;text-decoration:none">Open Canva template</a>' : '')
+    + '<span id="tll-copied" style="display:none;color:#27AE60;font-weight:700;font-size:12px">&#10003; Copied!</span>'
+    + '</div>'
+    + '<style>.tll-toolbar{position:sticky;top:0;z-index:9999;display:flex;align-items:center;gap:8px;background:#F0F3F7;border-bottom:2px solid #1A3A5C;padding:10px 16px;font-family:Arial;flex-wrap:wrap}'
+    + '.tll-toolbar button{border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Arial}'
+    + '.tll-toolbar button:hover{opacity:.85}'
+    + '#doc{caret-color:#2E86C1}'
+    + '@media print{.tll-toolbar{display:none!important}}</style>';
+}
+var EDIT_SCRIPT = '<script src="https://cdnjs.cloudflare.com/ajax/libs/html-docx-js/0.3.1/html-docx.min.js"><\/script>'
+  + '<script>'
+  + 'function tllPDF(){window.print();}'
+  + 'function tllWord(){var d=document.getElementById("doc");var st="";document.querySelectorAll("style").forEach(function(s){st+=s.innerHTML+"\\n"});var h="<!DOCTYPE html><html><head><meta charset=\\"utf-8\\"><style>"+st+"</style></head><body>"+d.innerHTML+"</body></html>";try{var b=htmlDocx.asBlob(h);var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=(document.title||"document").replace(/[^a-z0-9 ._-]/gi,"")+".docx";a.click();}catch(e){alert("Word export failed: "+e.message);}}'
+  + 'function tllCopy(){var t=document.getElementById("doc").innerText;navigator.clipboard.writeText(t).then(function(){var c=document.getElementById("tll-copied");c.style.display="inline";setTimeout(function(){c.style.display="none"},2500);},function(){alert("Could not copy - your browser blocked clipboard access.");});}'
+  + '<\/script>';
 
 // ── PDF: PROFILE GENERATOR ───────────────────────────────────────────────────
 function generateProfilePDF() {
@@ -1095,7 +1121,7 @@ function generateProfilePDF() {
     + '.footer-item{font-size:11px;color:#555}'
     + '.footer-item strong{color:#1A3A5C}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
-    + '</style></head><body>'
+    + '</style></head><body>' + editToolbar(tp.canva) + '<div id="doc" contenteditable="true" spellcheck="false">'
 
     // Cover
     + '<div class="cover">'
@@ -1134,13 +1160,13 @@ function generateProfilePDF() {
     + '<div class="footer-item"><strong>Phone:</strong> ' + phone + ' &nbsp;|&nbsp; <strong>Web:</strong> ' + web + '</div>'
     + '</div>'
 
-    + '</body></html>';
+    + '</div>' + EDIT_SCRIPT + '</body></html>';
 
   var win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { showToast("Popup blocked - please allow popups for this site", "err"); return; }
   win.document.write(content);
   win.document.close();
   win.focus();
-  setTimeout(function() { win.print(); }, 600);
 }
 
 // ── PDF: PROPOSAL GENERATOR ──────────────────────────────────────────────────
@@ -1223,7 +1249,7 @@ function generateProposalPDF() {
     + '.cost-total{background:#1A3A5C;color:#fff;padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}'
     + '.tag-box{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}'
     + '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page-break{page-break-before:always}}'
-    + '</style></head><body>'
+    + '</style></head><body>' + editToolbar(tp.canva) + '<div id="doc" contenteditable="true" spellcheck="false">'
 
     // ── COVER PAGE ──────────────────────────────────────────────────────────
     + '<div class="cover">'
@@ -1305,13 +1331,13 @@ function generateProposalPDF() {
     + '<div style="font-size:11px;color:#888;margin-top:10px">+60 14 6248 386 &nbsp;|&nbsp; www.leadershiplabtx.com &nbsp;|&nbsp; the-leadership-labtx</div>'
     + '</div></div>'
 
-    + '</body></html>';
+    + '</div>' + EDIT_SCRIPT + '</body></html>';
 
   var win = window.open('', '_blank', 'width=1000,height=800');
+  if (!win) { showToast("Popup blocked - please allow popups for this site", "err"); return; }
   win.document.write(content);
   win.document.close();
   win.focus();
-  setTimeout(function() { win.print(); }, 800);
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
