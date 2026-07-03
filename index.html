@@ -128,6 +128,7 @@ label:first-child{margin-top:0}
     </div>
     <div class="sitem active" id="nav-dashboard" onclick="navigate('dashboard')"><i class="ti ti-layout-dashboard" style="font-size:17px"></i> Dashboard</div>
     <div class="sitem" id="nav-wizard" onclick="startNew()"><i class="ti ti-file-plus" style="font-size:17px"></i> New proposal</div>
+    <div class="sitem" id="nav-programmes" onclick="navigate('programmes')"><i class="ti ti-books" style="font-size:17px"></i> Programme library</div>
     <div class="sitem" id="nav-history" onclick="navigate('history')"><i class="ti ti-folder" style="font-size:17px"></i> Client history</div>
     <div class="sitem" id="nav-speakers" onclick="navigate('speakers')"><i class="ti ti-users" style="font-size:17px"></i> Speaker profiles</div>
     <div class="sitem" id="nav-profile" onclick="navigate('profile')"><i class="ti ti-building" style="font-size:17px"></i> The Leadership Lab</div>
@@ -151,7 +152,7 @@ var N = "#1A3A5C", B = "#2E86C1";
 
 // ── STATE ───────────────────────────────────────────────────────────────────
 var view = "dashboard", step = 1, proposals = [], form = {}, currentUser = null;
-var allTrainers = [], trainerSearch = "", expandedTrainer = null, trainerFormId = null, trainerPhotoData = "";
+var allTrainers = [], trainerSearch = "", expandedTrainer = null, trainerFormId = null, trainerPhotoData = "", progSearch = "";
 
 // ── DATA: PROGRAMMES ────────────────────────────────────────────────────────
 var PROGS = [
@@ -542,9 +543,44 @@ function render() {
   else if (view === "wizard") m.innerHTML = vWiz();
   else if (view === "history") m.innerHTML = vHist();
   else if (view === "speakers") m.innerHTML = vSpeak();
+  else if (view === "programmes") m.innerHTML = vProgs();
   else if (view === "profile") m.innerHTML = vProf();
   else if (view === "tllinfo") m.innerHTML = vTllInfo();
   else if (view === "trainer-form") m.innerHTML = vTrainerForm();
+}
+
+// ── VIEW: PROGRAMME LIBRARY ──────────────────────────────────────────────────
+function vProgs() {
+  var q = (progSearch || "").toLowerCase();
+  var cards = PROGS.map(function(pr) {
+    var subs = (pr.subs || []).filter(function(s) {
+      return !q || (s.name + " " + s.desc + " " + pr.name + " " + (pr.tag||"")).toLowerCase().indexOf(q) > -1;
+    });
+    if (q && subs.length === 0) return "";
+    var rows = subs.map(function(s) {
+      return '<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid #e0e4ea;border-radius:7px;margin-bottom:7px;background:#FAFBFC">'
+        + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:12.5px;color:' + N + '">' + s.name + '</div>'
+        + '<div style="font-size:11.5px;color:#555;line-height:1.55;margin-top:3px">' + s.desc + '</div></div>'
+        + '<div style="text-align:right;white-space:nowrap"><div style="font-weight:700;font-size:12px;color:#2E86C1">' + fmt(s.defRate, "MYR") + '</div>'
+        + '<div style="font-size:10px;color:#999">default rate / day</div></div>'
+        + '</div>';
+    }).join('');
+    var cnt = (pr.subs || []).length;
+    return '<div class="card" style="margin-bottom:14px">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><i class="ti ' + pr.icon + '" style="color:' + (pr.color||N) + ';font-size:20px"></i>'
+      + '<div><div style="font-weight:800;font-size:15px;color:' + N + '">' + pr.name + '</div>'
+      + '<div style="font-size:11px;color:#888">' + (pr.tag||"") + ' &middot; ' + cnt + ' programme' + (cnt!==1?'s':'') + '</div></div></div>'
+      + (pr.desc ? '<p style="font-size:12px;color:#555;line-height:1.6;margin:6px 0 12px">' + pr.desc + '</p>' : '<div style="height:8px"></div>')
+      + rows + '</div>';
+  }).join('');
+  if (q && !cards.trim()) cards = '<div style="text-align:center;padding:40px;color:#aaa;font-size:13px">No programmes match &ldquo;' + progSearch.replace(/</g,"&lt;") + '&rdquo;</div>';
+  return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px">'
+    + '<h2 style="font-size:20px;font-weight:700;color:' + N + ';margin:0">Programme library</h2>'
+    + '<button class="btn btn-primary btn-sm" onclick="startNew()"><i class="ti ti-file-plus"></i> Start a proposal</button></div>'
+    + '<p style="font-size:12px;color:#666;margin-bottom:12px">Every programme across our pillars in one place &mdash; use this as a reference before building a proposal. Default rates are in RM and can be adjusted (or switched to USD) inside each proposal.</p>'
+    + '<div style="position:relative;margin-bottom:16px"><i class="ti ti-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#aaa;font-size:15px"></i>'
+    + '<input type="text" id="prog-q" placeholder="Search programmes by name, topic or pillar..." value="' + (progSearch||"").replace(/"/g,"&quot;") + '" oninput="progSearch=this.value;render();var e=ge(\'prog-q\');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length)}" style="padding-left:34px"></div>'
+    + cards;
 }
 
 // ── VIEW: DASHBOARD ──────────────────────────────────────────────────────────
@@ -1210,6 +1246,7 @@ function generateProposalPDF() {
   var web = tp.web || "www.leadershiplabtx.com";
   var linkedin = tp.linkedin || "the-leadership-labtx";
   var about = tp.about || "At The Leadership Lab, we empower leaders and organizations through innovative training that enhances influence, adaptability, and communication. Our programs challenge conventional thinking, sharpen decision-making, and equip professionals, whether seasoned executives or emerging leaders, with the skills to lead confidently and communicate effectively.";
+  if (form.currency === "USD") about = about.replace(/[^.]*HRD[^.]*\.\s*/g, "").trim();
   var mission = tp.mission || "To empower leaders and professionals with the mindset, skills, and strategies needed to navigate complexity, drive innovation, and foster meaningful connections.";
   var vision = tp.vision || "To be a global leader in leadership and communication development, shaping a future where leaders at all levels drive change, inspire growth, and create lasting impact in their organizations and communities.";
 
